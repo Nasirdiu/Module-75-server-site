@@ -71,16 +71,28 @@ async function run() {
       );
       res.send({ result, token });
     });
-    app.put("/user/admin/:email",verifyJWT, async (req, res) => {
+    app.get("/admin/:email", async (req, res) => {
       const email = req.params.email;
-
-      const filter = { email: email };
-
-      const updateDoc = {
-        $set: { role: "admin" },
-      };
-      const result = await userCollection.updateOne(filter, updateDoc);
-      res.send(result);
+      const user = await userCollection.findOne({ email: email });
+      const isAdmin = user.role === "admin";
+      res.send({ admin: isAdmin });
+    });
+    app.put("/user/admin/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const requester = req.decoded.email;
+      const requesterAccount = await userCollection.findOne({
+        email: requester,
+      });
+      if (requesterAccount.role === "admin") {
+        const filter = { email: email };
+        const updateDoc = {
+          $set: { role: "admin" },
+        };
+        const result = await userCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      } else {
+        return res.status(403).send({ message: "Forbidden" });
+      }
     });
 
     // Warning: This is not the proper way to query multiple collection.
